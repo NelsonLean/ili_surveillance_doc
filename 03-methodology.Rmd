@@ -1,0 +1,280 @@
+# Data Processing and Analytical Methodology {#methodology}
+
+This chapter describes the statistical methods underpinning the dashboard's analytical outputs: the computation of ILI consultation rates, smoothing, average curve construction, and the derivation of epidemic and intensity thresholds. The approach is consistent with the WHO Global Influenza Programme's Average Curve Method (ACM) [@WHO2020ACM].
+
+---
+
+## ILI Consultation Rate {#cr-formula}
+
+### Definition
+
+The **ILI consultation rate (CR)**, expressed as a percentage, is the primary metric used throughout the dashboard. It represents the proportion of outpatient department (OPD) consultations at a sentinel facility attributed to influenza-like illness in a given epidemiological week.
+
+### Formula
+
+For facility $i$ in epidemiological week $t$:
+
+$$CR_{i,t} = \frac{N_{\text{ILI},i,t}}{N_{\text{OPD},i,t}} \times 100$$
+
+where:
+
+- $CR_{i,t}$ = ILI consultation rate (%) at facility $i$ in week $t$
+- $N_{\text{ILI},i,t}$ = number of ILI cases recorded at facility $i$ in week $t$
+- $N_{\text{OPD},i,t}$ = total OPD attendances at facility $i$ in week $t$
+
+### District-Level Rate
+
+The district-level CR is computed as the aggregate across all $K = 7$ sentinel facilities:
+
+$$CR_{\text{district},t} = \frac{\sum_{i=1}^{K} N_{\text{ILI},i,t}}{\sum_{i=1}^{K} N_{\text{OPD},i,t}} \times 100$$
+
+This pooled approach weights each facility's contribution proportionally to its OPD volume, avoiding simple averaging across facilities with very different patient loads.
+
+### Worked Example (Week 23, 2026)
+
+```{r cr-example-table}
+fac_data <- data.frame(
+  Facility = c("KK Apas Balung", "KK Felda U-U", "KK Kalabakan",
+               "KK Merotai Besar", "KK Sungai Tamang", "KK Tawau", "KK Kinabutan"),
+  ILI = c(118, 62, 9, 52, 20, 652, 36),
+  OPD = c(836, 512, 244, 577, 133, 5059, 478),
+  Rate = c(14.11, 12.11, 3.69, 9.01, 15.04, 12.89, 7.53)
+)
+
+fac_data$`Rate (%)` <- sprintf("%.2f%%", fac_data$Rate)
+fac_data$Rate <- NULL
+
+kable(
+  fac_data,
+  caption = "Facility-level ILI consultation rates, Week 23, 2026",
+  col.names = c("Facility", "ILI Cases", "OPD Attendances", "Rate (%)"),
+  booktabs = TRUE,
+  align = c("l", "r", "r", "r")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  row_spec(nrow(fac_data), bold = TRUE) %>%
+  add_header_above(c(" " = 1, "Week 23 · 2026" = 3)) %>%
+  footnote(
+    general = paste0(
+      "District CR = (118+62+9+52+20+652+36) / (836+512+244+577+133+5059+478) × 100 ",
+      "= 949 / 7839 × 100 = 12.11%"
+    ),
+    general_title = "District calculation:"
+  )
+```
+
+---
+
+## Three-Week Smoothed Rate {#smoothing}
+
+### Purpose
+
+The raw weekly CR is subject to short-term variability arising from day-of-week reporting effects, holiday periods, and random fluctuation in small facility counts. A **three-week moving average (smoothed CR)** is applied to reduce noise and reveal the underlying epidemic trend more clearly.
+
+### Formula
+
+For epidemiological weeks $t = 2$ to $t = n-1$, the centred three-week smoothed rate is:
+
+$$\widehat{CR}_t = \frac{CR_{t-1} + CR_t + CR_{t+1}}{3}$$
+
+For the **most recent (current) week** $t = n$, where $CR_{t+1}$ is not yet available, a trailing three-week average is applied:
+
+$$\widehat{CR}_n = \frac{CR_{n-2} + CR_{n-1} + CR_n}{3}$$
+
+### Worked Example (Weeks 21–23, 2026)
+
+$$\widehat{CR}_{23} = \frac{CR_{21} + CR_{22} + CR_{23}}{3} = \frac{10.77 + 11.34 + 12.11}{3} = \frac{34.22}{3} = 11.41\%$$
+
+The smoothed value (11.41%) is displayed alongside the observed value (12.11%) in the Current Status panel of the dashboard sidebar.
+
+---
+
+## Historical Average Curve {#avg-curve}
+
+### Construction
+
+The **historical average curve** represents the expected weekly ILI consultation rate based on the four-season baseline (2022–2025). For each epidemiological week $w$ ($w = 1, ..., 52$), the average curve value $\bar{CR}_w$ is the arithmetic mean of the observed CR values across all included baseline seasons:
+
+$$\bar{CR}_w = \frac{1}{S} \sum_{s=1}^{S} CR_{w,s}$$
+
+where $S = 4$ is the number of baseline seasons and $CR_{w,s}$ is the observed CR in week $w$ of season $s$.
+
+The resulting 52-point curve represents the "typical" seasonal profile for the Tawau district. It is plotted on the main trend chart as the reference line against which 2026 observed values are compared.
+
+### Confidence Interval Band
+
+A 90% confidence interval band is displayed around the average curve to convey the expected range of inter-seasonal variability. The upper bound of this band is derived from the 90th percentile of historical weekly values at each week $w$, computed using the normal distribution approximation with parameters estimated from the baseline data (see Section \@ref(threshold-method)).
+
+---
+
+## Epidemic and Intensity Thresholds {#threshold-method}
+
+### Overview
+
+The dashboard employs a five-tier intensity classification system derived using the WHO ACM framework. Threshold values are fixed for the duration of the surveillance season based on the four-year historical baseline.
+
+### Epidemic Threshold
+
+The **epidemic threshold** is the value above which ILI activity is considered to have exceeded the inter-seasonal background level. Under the WHO ACM, this is defined as the **median** of all smoothed weekly ILI rates across the baseline seasons:
+
+$$T_{\text{epi}} = \text{Median}\left(\widehat{CR}_{w,s} \; \forall \; w \in \{1,...,52\}, s \in \{2022,...,2025\}\right)$$
+
+For the Tawau district (2022–2025 baseline):
+
+$$T_{\text{epi}} = 14.135\%$$
+
+Activity at or above this value is classified as **Epidemic (Low intensity)**.
+
+### Intensity Thresholds — Percentile Method
+
+The three intensity thresholds (Moderate, High, Extraordinary) are derived from the distribution of **smoothed seasonal peak values** across baseline seasons, using a **normal distribution approximation (z-score method)** [@WHO2020ACM].
+
+Let $P_s$ denote the smoothed peak CR value in season $s$. From the four baseline seasons, the sample mean $\mu_P$ and standard deviation $\sigma_P$ of peak values are estimated. Thresholds are then defined as:
+
+$$T_k = \mu_P + z_k \cdot \sigma_P$$
+
+where $z_k$ is the standard normal z-score corresponding to the desired percentile $k$:
+
+```{r threshold-table}
+kable(
+  data.frame(
+    Level = c("Epidemic (Low)", "Moderate", "High", "Extraordinary"),
+    Percentile = c("50th (median)", "40th", "90th", "97.5th"),
+    `z-score` = c("0", "-0.253", "1.282", "1.960"),
+    `Tawau 2026 (%)` = c("14.135", "18.770", "22.519", "24.176"),
+    Basis = c(
+      "Median of all baseline weekly rates",
+      "40th pct of smoothed seasonal peaks",
+      "90th pct of smoothed seasonal peaks",
+      "97.5th pct of smoothed seasonal peaks"
+    )
+  ),
+  caption = "Intensity threshold values for Tawau district ILI surveillance, 2026 season",
+  col.names = c("Intensity Level", "Percentile", "z-score", "Threshold (%)", "Statistical Basis"),
+  booktabs = TRUE,
+  align = c("l", "c", "c", "c", "l")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(4, bold = TRUE)
+```
+
+> **Note on the Moderate threshold:** The 40th percentile lies below the median, yielding a z-score of −0.253. This reflects the WHO ACM design intent: the Moderate threshold marks entry into the upper range of typical epidemic activity (i.e., above-average epidemics), not a second crossing above baseline.
+
+### Rationale for Exclusion of 2009 H1N1
+
+The 2009 influenza A(H1N1)pdm09 pandemic season is excluded from all baseline computations. Pandemic seasons are characterised by atypically high and early-season activity patterns that are incompatible with the inter-pandemic baseline model. Their inclusion would artificially inflate both the average curve and the intensity thresholds, reducing the sensitivity of the system to detect true epidemic activity in non-pandemic seasons [@WHO2017].
+
+---
+
+## Facility-Specific Thresholds {#facility-thresholds}
+
+### Rationale
+
+District-level thresholds are not applicable to individual facilities because:
+
+1. Smaller facilities have **higher statistical variability** in weekly CR due to smaller OPD denominators
+2. Patient case-mix and healthcare-seeking behaviour **differ by facility** (e.g. rural KKs serving plantation communities vs. the urban KK Tawau)
+3. Facility-level baselines were computed separately using the 2024–2025 two-season data available at the facility level
+
+### Computation
+
+Facility-specific thresholds are derived using the same percentile framework as the district thresholds, applied to each facility's individual historical weekly rate series. The resulting thresholds for the 2026 season are:
+
+```{r facility-thresholds-table}
+kable(
+  data.frame(
+    Facility = c("KK Apas Balung", "KK Felda U-U", "KK Kalabakan",
+                 "KK Merotai Besar", "KK Sungai Tamang", "KK Tawau", "KK Kinabutan"),
+    Baseline = rep("2024–2025", 7),
+    Epi = c(14.8, 27.2, 16.9, 14.3, 29.3, 12.4, 9.2),
+    Mod = c(14.2, 25.5, 15.8, 11.8, 28.0, 12.0, 8.9),
+    High = c(22.6, 37.6, 25.3, 28.0, 39.4, 16.8, 13.2),
+    Xtra = c(27.0, 47.9, 31.8, 32.8, 44.2, 20.2, 14.5)
+  ),
+  caption = "Facility-specific ILI intensity thresholds, 2024–2025 baseline",
+  col.names = c("Facility", "Baseline", "Epidemic (%)", "Moderate (%)", "High (%)", "Extraordinary (%)"),
+  booktabs = TRUE,
+  align = c("l", "c", "r", "r", "r", "r")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  footnote(
+    general = paste0(
+      "Thresholds derived from 2024–2025 weekly ILI consultation rates per facility. ",
+      "Epidemic threshold = median; Moderate/High/Extraordinary = 40th/90th/97.5th percentile ",
+      "of combined 2024–2025 weekly rates using normal distribution."
+    )
+  )
+```
+
+These facility-specific thresholds are used exclusively for the **facility heatmap** (Section \@ref(heatmap)). The district-level thresholds are used for all other dashboard elements.
+
+---
+
+## Clinical Sampling Positivity Rate {#positivity}
+
+### Formula
+
+The **weekly positivity rate** for clinical samples is:
+
+$$\text{Positivity}_t = \frac{N_{\text{positive},t}}{N_{\text{tested},t}} \times 100$$
+
+The **overall (cumulative) positivity rate** across all reported weeks:
+
+$$\text{Positivity}_{\text{overall}} = \frac{\sum_t N_{\text{positive},t}}{\sum_t N_{\text{tested},t}} \times 100$$
+
+Inconclusive results are **excluded** from both numerator and denominator of the positivity calculation. They are tracked separately as an independent category.
+
+---
+
+## Notification Data Aggregation {#notif-method}
+
+### Subtype Classification Rule
+
+Classification of individual notification records into the three dashboard categories (Influenza A, Influenza B, Unspecified/Other) is performed programmatically in Python at the point of data extraction from the `inf.xlsx` export. The classification logic is:
+
+```python
+if "Influenza A" in Test_Result:      # case-insensitive match
+    category = "Influenza A"
+elif Test_Result == "Influenza B":    # exact match
+    category = "Influenza B"
+else:
+    category = "Unspecified / Other"  # includes nulls, parainfluenza, etc.
+```
+
+This rule is validated against the cumulative line list at each update to confirm consistency with prior weeks' counts before any dashboard edit is made.
+
+### Age Group Binning
+
+Notified cases are binned into six age groups for the notification age distribution chart:
+
+| Age group label | Age range |
+|---|---|
+| < 5 | 0 to 4 years |
+| 5–9 | 5 to 9 years |
+| 10–17 | 10 to 17 years |
+| 18–29 | 18 to 29 years |
+| 30–59 | 30 to 59 years |
+| ≥ 60 | 60 years and above |
+
+Age is taken from the `Age` field in the notification database, recorded in years at the time of consultation.
+
+---
+
+## Data Validation Procedure {#validation}
+
+Before any dashboard edit is committed, the following cross-checks are performed:
+
+1. **Facility rate reconciliation** — The dashboard operator-computed facility CR (cases / OPD × 100) is compared against the reported CR in the source image. A discrepancy greater than 0.1 percentage point triggers re-verification of the source data.
+
+2. **District rate derivation** — The district-level CR is independently computed from facility totals and compared against the value that will appear on the dashboard after updating the OBS array.
+
+3. **Notification array length check** — The lengths of NOTIF_INFA, NOTIF_INFB, and NOTIF_OTHER arrays are verified to be equal and to match the number of entries in NOTIF_WEEKS.
+
+4. **Cumulative total reconciliation** — Total notifications per subtype (sum of weekly arrays) are verified against the independently computed total from the `inf.xlsx` line list.
+
+5. **Smoothed rate verification** — SMO[n] is verified against the formula $(\text{OBS}[n-2] + \text{OBS}[n-1] + \text{OBS}[n]) / 3$ using the current week's observed value.
+
+These checks are conducted using a Python validation script run against the source `.xlsx` file prior to manual HTML editing (see Chapter \@ref(sop)).

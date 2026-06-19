@@ -1,0 +1,164 @@
+# Interpretation Guide {#interpretation}
+
+This chapter provides operational guidance for interpreting the ILI Surveillance Dashboard outputs. It is aimed at public health staff using the dashboard for situational awareness and response decision-making, and at KKM auditors reviewing surveillance outputs.
+
+---
+
+## Reading the Intensity Classification {#interp-intensity}
+
+The five-tier intensity classification system is the primary output of the surveillance system. Table \@ref(tab:intensity-response) summarises what each tier means in terms of epidemiological status and suggested operational response.
+
+```{r intensity-response}
+kable(
+  data.frame(
+    Tier = c("Below Seasonal", "Epidemic (Low)", "Moderate", "High", "Extraordinary"),
+    Colour = c("Green", "Amber", "Orange", "Red", "Purple"),
+    `CR Range (District)` = c(
+      "< 14.1%", "14.1–18.8%", "18.8–22.5%", "22.5–24.2%", "≥ 24.2%"
+    ),
+    `Epidemiological Meaning` = c(
+      "ILI activity is within expected inter-seasonal background levels. No unusual burden on health facilities.",
+      "ILI activity has exceeded the median of historical baseline seasons. Activity is above the typical background but within the range previously seen.",
+      "Activity exceeds the 40th percentile of historical seasonal peaks. Associated with above-average impact on OPD capacity.",
+      "Activity exceeds the 90th percentile of historical peak weeks. Represents unusually severe seasonal ILI burden.",
+      "Activity exceeds the 97.5th percentile of historical peak weeks. Indicates exceptional activity not seen in baseline seasons."
+    ),
+    `Suggested Action` = c(
+      "Routine surveillance. Continue weekly updates.",
+      "Heightened monitoring. Verify data quality. Alert facility staff.",
+      "Notify JKN. Review clinical sampling results. Assess healthcare capacity.",
+      "Formal notification to JKN and KKM. Activate enhanced response measures.",
+      "Immediate escalation. Pandemic/outbreak protocols may apply."
+    )
+  ),
+  caption = "Intensity tier definitions and suggested operational responses",
+  col.names = c("Tier", "Colour", "CR Range (2026)", "Epidemiological Meaning", "Suggested Action"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 12) %>%
+  column_spec(4, width = "6cm") %>%
+  column_spec(5, width = "5cm")
+```
+
+> **Important:** The intensity classification is based on the **district-level observed CR** for the current week. It should always be interpreted alongside the smoothed CR, the trend direction, and the virological evidence from sentinel sampling and notifications.
+
+---
+
+## Observed vs Smoothed CR {#interp-smooth}
+
+The relationship between the observed CR and the smoothed CR provides information about the **stability and direction of the current trend**.
+
+```{r smooth-interp}
+kable(
+  data.frame(
+    Pattern = c(
+      "Observed ↑, Smoothed ↑",
+      "Observed ↑, Smoothed flat",
+      "Observed ↓, Smoothed ↑",
+      "Observed > threshold, Smoothed < threshold",
+      "Observed < threshold, Smoothed > threshold"
+    ),
+    Interpretation = c(
+      "Sustained increasing trend. Genuine rise in ILI activity. High confidence in classification.",
+      "Single-week spike. Verify source data before escalating. May reflect a reporting anomaly.",
+      "Peak may have passed. Smoothed rate captures the recent accumulation; recent week shows decline.",
+      "Threshold crossing may be a transient spike rather than a sustained epidemic. Await next week before formal alert.",
+      "Activity is declining but remains elevated on a smoothed basis. Early phase of downturn."
+    )
+  ),
+  caption = "Interpreting divergence between observed and smoothed CR",
+  col.names = c("Pattern", "Interpretation"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(2, width = "10cm")
+```
+
+---
+
+## Interpreting Facility Heatmap Patterns {#interp-heatmap}
+
+The facility heatmap uses **facility-specific thresholds** and should not be used to directly compare the intensity of two different facilities. A "High" cell at KK Kalabakan does not imply the same absolute rate as a "High" cell at KK Tawau (see Section \@ref(facility-thresholds)).
+
+**Patterns to watch for:**
+
+- **Single facility, single week in red/purple** — likely a data entry error or a genuine localised outbreak. Verify source data first; if confirmed, investigate the facility.
+- **Multiple facilities in yellow/amber simultaneously** — suggests district-wide epidemic activity is underway or imminent.
+- **A facility showing persistent green while others are elevated** — may indicate under-reporting at that facility, or a genuinely lower-risk catchment population.
+- **A single facility trending from green to yellow to orange over consecutive weeks** — early signal of a localised outbreak; investigate case clustering.
+
+---
+
+## Integrating Virological and Epidemiological Evidence {#interp-integrated}
+
+The dashboard integrates three distinct evidence streams. The following framework supports combined interpretation:
+
+```{r integrated-interp}
+kable(
+  data.frame(
+    Scenario = c(
+      "High CR + High positivity + Influenza B dominant in notifications",
+      "High CR + Low positivity + No influenza detected in samples",
+      "Low CR + High positivity",
+      "Rising notifications, stable CR",
+      "Rising CR, stable notifications"
+    ),
+    Interpretation = c(
+      "Strong evidence of influenza B-driven epidemic. High confidence in classification.",
+      "ILI burden is high but may be driven by non-influenza respiratory pathogens (e.g. SARS-CoV-2, parainfluenza, rhinovirus). Influenza-specific interventions may be less effective.",
+      "Influenza is circulating but ILI burden on facilities is currently low. Monitor for escalation.",
+      "Confirmed influenza cases increasing in the community but possibly not yet presenting to sentinel facilities in large numbers, or presentation concentrated in private sector.",
+      "Syndromic ILI burden is increasing but may not yet be captured in voluntary notification system. Consider under-notification from private practitioners."
+    )
+  ),
+  caption = "Integrated interpretation of ILI, sampling, and notification signals",
+  col.names = c("Scenario", "Interpretation"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 12) %>%
+  column_spec(2, width = "10cm")
+```
+
+---
+
+## Age Group Interpretation {#interp-age}
+
+The age group charts (facility cases and notification distribution) provide supplementary epidemiological characterisation.
+
+| Pattern | Implication |
+|---|---|
+| Predominance of < 10 and 10–18 age groups | Paediatric or school-age clustering; consider school-setting transmission |
+| Predominance of 19–59 age group | Working-age adult burden; greater productivity impact |
+| Disproportionate ≥ 60 burden | Higher risk of severe outcomes; monitor hospitalisation and ICU data |
+| Shift from younger to older age groups over season | May indicate waning immunity in older cohorts or different pathogen wave |
+
+---
+
+## Historical Comparison {#interp-historical}
+
+The year overlay function on the main chart allows direct comparison of 2026 activity against any prior season. Consider the following when using this feature:
+
+- **Peak timing:** If 2026 activity is rising earlier than the prior year, it may peak earlier — relevant for planning purposes.
+- **Peak magnitude:** If the current trajectory is tracking above the comparable week of a prior high-intensity season (e.g. 2025), heightened alertness is warranted.
+- **Post-peak duration:** ILI may remain elevated for several weeks after the peak; the overlay helps contextualise how quickly prior seasons returned to baseline.
+
+---
+
+## Limitations Affecting Interpretation {#interp-limitations}
+
+Users must bear in mind the following limitations when interpreting dashboard outputs:
+
+1. **Syndromic surveillance is not laboratory-confirmed.** A rising ILI rate does not necessarily indicate influenza; other respiratory pathogens can produce identical syndromic presentations.
+
+2. **Thresholds are derived from a short baseline (4 seasons).** With only four seasons, the statistical estimates carry wider uncertainty. The "Extraordinary" threshold in particular may be revised as more seasons accumulate.
+
+3. **Small facilities have inherently noisier data.** Weekly rates at rural facilities (e.g. KK Kalabakan, KK Sungai Tamang) with small OPD volumes are more volatile than those at KK Tawau and should be interpreted with greater caution for single-week observations.
+
+4. **Notification data lag.** Private practitioners may report cases days to weeks after consultation. Recent weeks' notification counts should be regarded as provisional and may increase as late entries are submitted.
+
+5. **Sentinel sampling is from a single site.** Pathogen findings at KK Tawau may not represent the rural facilities. Absence of influenza detection at KK Tawau does not exclude influenza circulation elsewhere in the district.
+
+6. **Dashboard reflects data as submitted.** If facility staff submit erroneous counts, the dashboard will display those values until corrected. Data quality depends on the competence and diligence of facility reporters.

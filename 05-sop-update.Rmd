@@ -1,0 +1,449 @@
+# Standard Operating Procedure — Weekly Dashboard Update {#sop}
+
+```{r sop-header-table, echo=FALSE}
+kable(
+  data.frame(
+    Field = c("Document Title", "Document Number", "Version", "Effective Date",
+              "Review Date", "Author", "Reviewed By", "Approved By",
+              "Department", "Classification"),
+    Value = c(
+      "Weekly Update Procedure — ILI Surveillance Dashboard, PKK Tawau",
+      "SOP-EPID-TWU-001",
+      "1.0",
+      format(Sys.Date(), "%d %B %Y"),
+      format(Sys.Date() + 365, "%d %B %Y"),
+      "[Name, Designation]",
+      "[Name, Designation]",
+      "[Name, Designation]",
+      "Epidemiology Unit, Pejabat Kesihatan Kawasan Tawau",
+      "Internal — Not for Public Distribution"
+    )
+  ),
+  col.names = c("", ""),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("bordered"), full_width = FALSE, font_size = 13) %>%
+  column_spec(1, bold = TRUE, width = "5cm") %>%
+  column_spec(2, width = "10cm")
+```
+
+---
+
+## Purpose and Scope {#sop-purpose}
+
+This Standard Operating Procedure (SOP) describes the steps required to update the ILI Surveillance Dashboard (`ILI_Surveillance_Dashboard_v3_Week[N].html`) following the close of each epidemiological week. It is applicable to all personnel in the PKK Tawau Epidemiology Unit authorised to perform dashboard updates.
+
+The procedure covers:
+
+- Data collection and receipt verification
+- Data extraction and validation using the Python script
+- Manual update of the dashboard HTML file
+- Post-update quality checks
+- File versioning and distribution
+
+This SOP does **not** cover: initial dashboard setup, threshold recalculation at the start of a new surveillance season, or modification of the dashboard's code structure. Those activities require separate technical authorisation.
+
+---
+
+## Roles and Responsibilities {#sop-roles}
+
+```{r roles-table}
+kable(
+  data.frame(
+    Role = c(
+      "Data Coordinator",
+      "Dashboard Operator",
+      "Reviewing Officer",
+      "Unit Head"
+    ),
+    Responsibility = c(
+      "Collects facility ILI data images, age breakdown images, clinical sampling line list, and exports the notification database (inf.xlsx) each week. Verifies completeness before handover.",
+      "Performs Python validation script, updates HTML arrays, conducts post-update checks, saves versioned file, and distributes to recipients.",
+      "Spot-checks the updated dashboard against source data for the current week before distribution. Signs off on Section 5.9.",
+      "Authorises distribution if intensity level has changed or if data anomalies are identified."
+    ),
+    `Designated Staff` = rep("[To be assigned]", 4)
+  ),
+  caption = "Roles and responsibilities for the weekly dashboard update cycle",
+  col.names = c("Role", "Responsibility", "Designated Staff"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(2, width = "8cm")
+```
+
+---
+
+## Update Schedule {#sop-schedule}
+
+```{r schedule-table}
+kable(
+  data.frame(
+    Day = c("Sunday (Week close)", "Monday", "Tuesday", "Wednesday", "Thursday"),
+    Activity = c(
+      "Epidemiological week closes. Facility staff finalise case counts.",
+      "Facility data submitted to PKK Tawau. Data Coordinator collects all inputs.",
+      "Data Coordinator verifies completeness of all inputs. Dashboard Operator runs Python validation.",
+      "Dashboard Operator updates HTML file. Reviewing Officer performs spot-check.",
+      "Finalised dashboard distributed to recipients (latest)."
+    )
+  ),
+  caption = "Target weekly update schedule",
+  col.names = c("Day", "Activity"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(2, width = "12cm")
+```
+
+> **Target:** Dashboard update should be completed and distributed no later than **Thursday** of the following week.
+
+---
+
+## Required Inputs {#sop-inputs}
+
+Before beginning the update procedure, verify that **all four inputs** for the current epidemiological week (Week $N$) are available:
+
+```{r inputs-checklist}
+kable(
+  data.frame(
+    `#` = 1:4,
+    Input = c(
+      "Facility summary table image",
+      "Age breakdown table image",
+      "Clinical sampling line list image",
+      "Notification database export (inf.xlsx)"
+    ),
+    Content = c(
+      "KES (SEMASA), OPD (SEMASA), KONSULTASI % (SEMASA) — one row per sentinel facility, current week",
+      "ILI cases and OPD by age group (< 10, 10–18, 19–59, ≥ 60) per facility, current week",
+      "Sample line list rows for current week: year, week, age, gender, result columns",
+      "Cumulative influenza notification line list from Week 1 to current week N"
+    ),
+    Format = c("Image (.png / .jpg)", "Image (.png / .jpg)", "Image (.png / .jpg)", "Excel (.xlsx)")
+  ),
+  caption = "Required inputs for each weekly dashboard update",
+  col.names = c("#", "Input", "Content", "Format"),
+  booktabs = TRUE,
+  align = c("c", "l", "l", "l")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(3, width = "7cm")
+```
+
+**Do not proceed if any input is missing.** Record the missing item in the update log and escalate to the Data Coordinator.
+
+---
+
+## Step-by-Step Procedure {#sop-steps}
+
+### Step 1 — Extract Facility ILI Data (Input 1) {#step1}
+
+From the **facility summary table image**, read and record the following values for each of the seven sentinel facilities for Week $N$:
+
+- ILI cases ($N_{\text{ILI}}$)
+- OPD attendances ($N_{\text{OPD}}$)
+- Consultation rate as reported ($CR_{\text{reported}}$)
+
+Enter values into the **Data Entry Worksheet** (Table \@ref(tab:data-worksheet)).
+
+```{r data-worksheet, echo=FALSE}
+kable(
+  data.frame(
+    Facility = c("KK Apas Balung", "KK Felda Umas-Umas", "KK Kalabakan",
+                 "KK Merotai Besar", "KK Sungai Tamang", "KK Tawau", "KK Kinabutan",
+                 "DISTRICT TOTAL"),
+    Cases = rep("___", 8),
+    OPD = rep("___", 8),
+    `CR Reported (%)` = rep("___", 8),
+    `CR Computed (%)` = rep("___", 8),
+    Match = rep("☐ Yes  ☐ No", 8)
+  ),
+  caption = "Data entry worksheet — facility ILI data (complete for each update)",
+  col.names = c("Facility", "Cases", "OPD", "CR Reported (%)", "CR Computed (%)", "Match?"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("bordered"), full_width = TRUE, font_size = 12) %>%
+  row_spec(8, bold = TRUE)
+```
+
+**Compute the CR** for each facility: $CR = (Cases / OPD) \times 100$. Round to two decimal places. Compare against the reported value. A discrepancy > 0.1 percentage point requires re-reading the source image before proceeding.
+
+**Compute the district total:** Sum all facility cases and all facility OPD counts. Compute the district CR as the pooled rate. This value becomes **OBS[N]**.
+
+**Compute SMO[N]:** $\text{SMO}[N] = (\text{OBS}[N-2] + \text{OBS}[N-1] + \text{OBS}[N]) / 3$. Record to two decimal places.
+
+### Step 2 — Extract Age Group Data (Input 2) {#step2}
+
+From the **age breakdown image**, read the current-week ILI case counts for each of the four age groups (< 10, 10–18, 19–59, ≥ 60) for each facility. These values replace the `AGE_CUR_CASES` array.
+
+For `AGE_CUM_CASES`, add the current week's values to the previous cumulative totals for each facility and age group. Verify that the row totals equal the facility's total case count from Step 1.
+
+### Step 3 — Run Python Validation Script (Input 4) {#step3}
+
+Before reading the clinical sampling or notification data, run the Python validation script against the current `inf.xlsx` file:
+
+```bash
+python3 validate_notifications.py --file inf.xlsx --week N
+```
+
+The script outputs:
+- Per-week counts for Influenza A, Influenza B, and Unspecified/Other
+- A MATCH / MISMATCH flag comparing weeks 1 to $N-1$ against the current dashboard arrays
+- Week $N$ new values for the NOTIF_INFA, NOTIF_INFB, NOTIF_OTHER arrays
+
+**All prior weeks must show MATCH before proceeding.** If a MISMATCH is found in any prior week, investigate and resolve before updating the current week.
+
+Record the Week $N$ notification values:
+
+- **NOTIF_INFA[N]:** `___`
+- **NOTIF_INFB[N]:** `___`
+- **NOTIF_OTHER[N]:** `___`
+- **Total notifications Week N:** `___`
+
+Also extract age group data for Week $N$ notifications from the script output for the `NOTIF_AGE_BY_WK` object, and update the `NOTIF_AGE_CUMUL` cumulative totals.
+
+### Step 4 — Extract Sampling Data (Input 3) {#step4}
+
+From the **clinical sampling line list image**, count the following for Week $N$:
+
+| Value | Count | Notes |
+|---|---|---|
+| Total samples tested | ___ | All rows for Week N |
+| Negative | ___ | No pathogen detected |
+| Influenza A positive | ___ | PATH_BY_WEEK[N][0] |
+| Influenza B positive | ___ | PATH_BY_WEEK[N][1] |
+| SARS-CoV-2 positive | ___ | PATH_BY_WEEK[N][2] |
+| Untyped positive | ___ | PATH_BY_WEEK[N][3] |
+| Inconclusive | ___ | PATH_BY_WEEK[N][4] |
+| Total positive | ___ | Sum of all positives |
+
+**Verify:** Total samples = Negative + Total positive + Inconclusive.
+
+Compute positivity rate: $\text{Yield} = (\text{Total positive} / \text{Total samples}) \times 100$ (round to one decimal place).
+
+Determine the `remarks` string for the SAMPLE_DATA entry based on pathogens detected.
+
+Record age and gender breakdown from the line list for the `SAMPLE_CHARS[N]` object.
+
+### Step 5 — Open and Edit the Dashboard HTML File {#step5}
+
+Open the **most recent versioned dashboard file** (e.g. `ILI_Surveillance_Dashboard_v3_Week[N-1].html`) in a text editor. **Save immediately as a new file:**
+
+```
+ILI_Surveillance_Dashboard_v3_Week[N].html
+```
+
+Make **no edits** to the prior week's file. All changes are made only to the new file.
+
+### Step 6 — Update JavaScript Data Arrays {#step6}
+
+Using the values recorded in Steps 1–4, update the following arrays and values in the `<script>` section of the HTML file. Each item should be updated in sequence.
+
+```{r array-checklist}
+kable(
+  data.frame(
+    `#` = 1:14,
+    Array = c("OBS", "SMO", "NOTIF overlay in mainChart",
+              "FACILITIES[0] — KK Apas Balung", "FACILITIES[1] — KK Felda U-U",
+              "FACILITIES[2] — KK Kalabakan", "FACILITIES[3] — KK Merotai Besar",
+              "FACILITIES[4] — KK Sungai Tamang", "FACILITIES[5] — KK Tawau",
+              "FACILITIES[6] — KK Kinabutan",
+              "FAC_WEEKS", "AGE_CUR_CASES", "AGE_CUM_CASES",
+              "SAMPLE_DATA"),
+    `Values to append` = c(
+      "OBS[N] — district CR for Week N",
+      "SMO[N] — 3-week trailing average",
+      "Notification total for Week N in the bar dataset",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "cases[N], opd[N], rate[N], updated total_c, total_o",
+      "Append N to the array",
+      "Replace all 7 facility rows with current week values",
+      "Replace all 7 facility rows with cumulative values",
+      "Append new {wk:N, samples:_, neg:_, pos:_, inc:_, yield:_, remarks:'_'}"
+    ),
+    Done = rep("☐", 14)
+  ),
+  caption = "Array update checklist — complete in sequence for each weekly update",
+  col.names = c("#", "Array / Variable", "Values to Update", "Done"),
+  booktabs = TRUE,
+  align = c("c", "l", "l", "c")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = TRUE, font_size = 12) %>%
+  column_spec(3, width = "7cm")
+```
+
+```{r array-checklist-2}
+kable(
+  data.frame(
+    `#` = 15:22,
+    Array = c("PATH_BY_WEEK", "SAMPLE_CHARS", "NOTIF_WEEKS", "NOTIF_INFA",
+              "NOTIF_INFB", "NOTIF_OTHER", "NOTIF_META", "NOTIF_AGE_BY_WK / CUMUL"),
+    `Values to append` = c(
+      "Append [InfA, InfB, CoV2, Untyped, Inc] for Week N",
+      "Append N: {u18:_, o18:_, m:_, f:_}",
+      "Append N",
+      "Append Influenza A count for Week N",
+      "Append Influenza B count for Week N",
+      "Append Unspecified/Other count for Week N",
+      "Append {u18:_, o18:_} for Week N",
+      "Add entry for Week N; update CUMUL totals"
+    ),
+    Done = rep("☐", 8)
+  ),
+  col.names = c("#", "Array / Variable", "Values to Update", "Done"),
+  booktabs = TRUE,
+  align = c("c", "l", "l", "c")
+) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = TRUE, font_size = 12) %>%
+  column_spec(3, width = "7cm")
+```
+
+### Step 7 — Update Static Text Labels {#step7}
+
+Search the file for all occurrences of `Weeks 1–[N-1]` and replace with `Weeks 1–[N]`. These appear in:
+
+- Weekly Values bar chart description
+- Facility Activity chart description
+- Weekly Sampling Log description
+- Notifications chart description
+- Age comment in code
+
+Also update the notification metric card values (total notifications, subtype counts and percentages, dominant week ranges).
+
+Also add **Week N** as a new `<option>` entry in the notification age week selector dropdown.
+
+### Step 8 — Check and Adjust Chart Y-Axis Maxima {#step8}
+
+If the current week's values approach or exceed prior axis maxima, increase the `max` property of the relevant chart scale:
+
+| Chart | Scale | When to increase |
+|---|---|---|
+| Main chart | `y.max` (default 28) | If OBS[N] or any threshold approaches 28 |
+| Bar chart | `y.max` (default 20) | If OBS[N] > 19 |
+| Notifications overlay | `yNotif.max` | If any weekly total > (max − 3) |
+| Pathogen chart | `y.max` | If PATH_BY_WEEK stacked total for any week > max |
+| Sample positivity | `yRate.max` | If any weekly yield > (max − 3) |
+
+### Step 9 — Post-Update Validation {#step9}
+
+After completing all edits, open the updated HTML file in a web browser and verify:
+
+```{r post-update-checklist}
+kable(
+  data.frame(
+    Check = c(
+      "Header data currency badge shows correct week number and date",
+      "Sidebar: observed CR matches Step 1 district total",
+      "Sidebar: smoothed CR matches Step 1 computed SMO[N]",
+      "Sidebar: intensity status tag colour and label are correct",
+      "Main chart: 2026 line extends to Week N with correct endpoint",
+      "Bar chart: Week N bar present with correct colour coding",
+      "Facility cards: all 7 show Week N rate and correct directional arrow",
+      "Heatmap: Week N column present for all facilities",
+      "Sampling metric cards: totals are cumulative through Week N",
+      "Notification metric cards: totals match inf.xlsx line list",
+      "No JavaScript console errors (press F12 in browser)"
+    ),
+    Result = rep("☐ Pass  ☐ Fail", 11)
+  ),
+  caption = "Post-update validation checklist",
+  col.names = c("Check", "Result"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = TRUE, font_size = 12) %>%
+  column_spec(2, width = "4cm")
+```
+
+Any failed check must be investigated and resolved before proceeding to Step 10.
+
+### Step 10 — Reviewing Officer Sign-Off {#step10}
+
+The Reviewing Officer independently verifies the following against source data:
+
+- District CR for Week N (from Step 1 worksheet)
+- Notification total for Week N (from Step 3 script output)
+- Intensity classification displayed in the status tag
+
+Upon satisfactory review, the Reviewing Officer signs Section \@ref(signoff) of this record.
+
+### Step 11 — Save, Version, and Distribute {#step11}
+
+1. Save the final HTML file as `ILI_Surveillance_Dashboard_v3_Week[N].html`
+2. Archive the previous week's file — do not delete
+3. Record the update in the Version Control Log (Section \@ref(version-log))
+4. Distribute to recipients per the current distribution list
+
+---
+
+## Known Data Anomalies {#sop-anomalies}
+
+The following pre-existing anomalies are documented and should be carried forward without correction unless explicitly reviewed and resolved:
+
+```{r anomalies-table}
+kable(
+  data.frame(
+    Anomaly = c("KK Kinabutan age-group reconciliation discrepancy"),
+    Description = c(
+      "The sum of age-group case counts for KK Kinabutan does not equal the facility's total case count by 1 case. This discrepancy originates in the source data prior to Week 22, 2026 and has been carried forward intentionally."
+    ),
+    `First noted` = c("Week 22, 2026"),
+    Status = c("Known — carry forward")
+  ),
+  caption = "Pre-existing data anomalies — carry forward without correction",
+  col.names = c("Anomaly", "Description", "First Noted", "Status"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "bordered"), full_width = TRUE, font_size = 12) %>%
+  column_spec(2, width = "8cm")
+```
+
+---
+
+## Reviewing Officer Sign-Off {#signoff}
+
+```{r signoff-block}
+kable(
+  data.frame(
+    Field = c("Epidemiological Week Updated", "Date of Update",
+              "Dashboard Operator (Name)", "Dashboard Operator (Signature)",
+              "Reviewing Officer (Name)", "Reviewing Officer (Signature)",
+              "Intensity Level (current week)", "Remarks"),
+    Entry = rep("", 8)
+  ),
+  col.names = c("Field", "Entry"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("bordered"), full_width = FALSE, font_size = 13) %>%
+  column_spec(1, bold = TRUE, width = "6cm") %>%
+  column_spec(2, width = "8cm")
+```
+
+---
+
+## Version Control Log {#version-log}
+
+```{r version-log}
+kable(
+  data.frame(
+    Version = c("SOP-EPID-TWU-001 v1.0", rep("", 4)),
+    Date = c(format(Sys.Date(), "%d %b %Y"), rep("", 4)),
+    `Weeks Covered` = c("1–23", rep("", 4)),
+    `Changed By` = c("[Name]", rep("", 4)),
+    `Summary of Changes` = c("Initial SOP release", rep("", 4))
+  ),
+  caption = "SOP version control log",
+  col.names = c("Version", "Date", "Weeks Covered", "Changed By", "Summary of Changes"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("bordered"), full_width = TRUE, font_size = 12) %>%
+  column_spec(5, width = "6cm")
+```

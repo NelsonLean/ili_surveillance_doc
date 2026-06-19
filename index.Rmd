@@ -1,0 +1,110 @@
+---
+title: "ILI Surveillance Dashboard — PKK Tawau"
+subtitle: "Technical Documentation & User Reference"
+author: "Pejabat Kesihatan Kawasan Tawau, Sabah, Malaysia"
+date: "`r format(Sys.Date(), '%B %Y')`"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: references.bib
+biblio-style: apalike
+link-citations: yes
+github-repo: YOUR-USERNAME/ili-surveillance-tawau-docs
+description: |
+  Technical documentation covering data sources, analytical methodology,
+  dashboard architecture, weekly update protocol, and interpretation guidance
+  for the PKK Tawau Influenza-Like Illness (ILI) Surveillance Dashboard.
+---
+
+```{r setup, include=FALSE}
+source("_common.R")
+```
+
+# Background and Purpose {#background}
+
+## Overview
+
+Influenza-Like Illness (ILI) surveillance is a cornerstone of communicable disease monitoring within the Malaysian public health system. In Sabah, district-level surveillance is coordinated through the Pejabat Kesihatan Kawasan (PKK), with each district health office responsible for collecting, analysing, and reporting weekly ILI data from designated sentinel health facilities.
+
+The **ILI Surveillance Dashboard for the Tawau District** was developed to provide a real-time, evidence-based situational awareness tool for district health officers, public health staff, and oversight bodies. The dashboard translates raw weekly ILI consultation data into a structured visual format, enabling rapid interpretation of current activity levels against established historical benchmarks.
+
+## Objectives
+
+The dashboard serves four primary objectives:
+
+1. **Situational awareness** — Present the current week's district-level ILI consultation rate in the context of historical seasonal patterns, allowing staff to assess whether activity is within normal range or above established intensity thresholds.
+
+2. **Threshold-based alerting** — Classify the current ILI activity level against a five-tier intensity framework (Below Seasonal, Epidemic/Low, Moderate, High, Extraordinary), derived from historical baseline data using the WHO Average Curve Method (ACM).
+
+3. **Facility-level monitoring** — Disaggregate district-level trends to the individual health facility, enabling identification of localised outbreaks or anomalous reporting patterns across the seven sentinel Klinik Kesihatan (KK) in the Tawau district.
+
+4. **Virological linkage** — Integrate sentinel clinical sampling results and practitioner-notified influenza case data with the epidemiological activity data, providing a combined picture of pathogen circulation alongside ILI burden.
+
+## Scope
+
+### Geographic Coverage
+
+The dashboard covers the **Tawau district, Sabah, Malaysia**. Data are collected from seven designated sentinel primary care health facilities (Klinik Kesihatan):
+
+```{r sentinel-table}
+kable(
+  data.frame(
+    Facility = c(
+      "KK Apas Balung", "KK Felda Umas-Umas", "KK Kalabakan",
+      "KK Merotai Besar", "KK Sungai Tamang", "KK Tawau", "KK Kinabutan"
+    ),
+    Role = c(
+      "Sentinel — ILI surveillance",
+      "Sentinel — ILI surveillance",
+      "Sentinel — ILI surveillance",
+      "Sentinel — ILI surveillance",
+      "Sentinel — ILI surveillance",
+      "Sentinel — ILI surveillance + clinical sampling",
+      "Sentinel — ILI surveillance"
+    ),
+    `Facility Type` = rep("Klinik Kesihatan (Government Primary Care)", 7)
+  ),
+  caption = "Sentinel health facilities included in the Tawau ILI Surveillance Dashboard",
+  col.names = c("Facility", "Surveillance Role", "Facility Type"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  row_spec(6, bold = TRUE)
+```
+
+KK Tawau is highlighted as it serves the dual role of ILI sentinel site and the designated clinical sampling sentinel site for the district.
+
+### Temporal Coverage
+
+- **Baseline period:** Epidemiological weeks 1–52 of 2022, 2023, 2024, and 2025 (four seasons; the 2009 H1N1 pandemic season is excluded from all baseline calculations)
+- **Surveillance period:** Season 2026 (epidemiological weeks 1–52, updated weekly as data become available)
+
+### Data Types
+
+Three distinct data streams are integrated within the dashboard:
+
+| Data stream | Source | Granularity |
+|---|---|---|
+| ILI consultation rates | Facility IDSR/HIS returns | Weekly, per facility |
+| Clinical sampling results | Sentinel laboratory line list | Weekly, per sample |
+| Influenza case notifications | District notification database | Weekly, per case |
+
+## Intended Users
+
+The dashboard is designed for two principal user groups:
+
+**Operational field staff** — District health officers, public health nurses, and epidemiology unit personnel at PKK Tawau who conduct weekly data entry, monitor activity levels, and initiate surveillance-linked public health responses.
+
+**KKM auditing and oversight** — Jabatan Kesihatan Negeri (JKN) Sabah and Kementerian Kesihatan Malaysia (KKM) personnel conducting routine programme audits, data quality reviews, or evaluation of district surveillance capacity.
+
+Chapter \@ref(guide) provides the detailed user-facing description of each dashboard element. Chapter \@ref(sop) documents the operational update protocol for field staff.
+
+## Limitations
+
+Users should be aware of the following limitations when interpreting dashboard outputs:
+
+- ILI is a **syndromic case definition** (fever ≥38°C with cough or sore throat, with onset within the past 10 days) and is not laboratory-confirmed. The ILI consultation rate reflects healthcare-seeking behaviour as well as true disease burden.
+- The dashboard relies on **voluntary and timely data submission** from sentinel facilities. Delays or incomplete reporting in any given week will affect the computed district rate.
+- Intensity thresholds are derived from a **four-season baseline (2022–2025)** and may not fully reflect long-term seasonal variability. Thresholds will be revised as additional seasons accumulate.
+- The influenza notification database is an **unofficial, locally-maintained system** and is subject to voluntary reporting bias and data completeness limitations (see Section \@ref(notification-db)).
+- Clinical sampling is conducted at a **single sentinel site (KK Tawau)** and may not be representative of pathogen circulation across all seven facilities or across the broader district population.

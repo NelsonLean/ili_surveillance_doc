@@ -1,0 +1,35 @@
+bookdown::gitbook:
+  css: style/custom.css
+  number_sections: true
+  split_by: chapter
+  split_bib: true
+  config:
+    toc:
+      collapse: section
+      scroll_highlight: true
+      before: |
+        <li><a href="./">ILI Surveillance Dashboard</a></li>
+        <li><a href="https://github.com/YOUR-USERNAME/ili-surveillance-tawau-docs">
+          <i class="fa fa-github"></i> GitHub</a></li>
+      after: |
+        <li><a href="https://www.moh.gov.my" target="_blank">
+          Kementerian Kesihatan Malaysia</a></li>
+    download: ["pdf"]
+    sharing:
+      github: yes
+      linkedin: no
+      twitter: no
+      facebook: no
+    info: yes
+  includes:
+    in_header: style/header.html
+
+bookdown::pdf_book:
+  includes:
+    in_header: style/preamble.tex
+  latex_engine: xelatex
+  citation_package: natbib
+  keep_tex: no
+  number_sections: true
+  toc: true
+  toc_depth: 3

@@ -1,0 +1,24 @@
+# R
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# bookdown build artefacts
+_bookdown_files/
+_main.Rmd
+_main.md
+*.utf8.md
+*.knit.md
+
+# rendered output (tracked, deployed to Pages — do NOT ignore docs/)
+# docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.bak

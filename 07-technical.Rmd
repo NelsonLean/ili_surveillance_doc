@@ -1,0 +1,187 @@
+# Technical Reference {#technical}
+
+---
+
+## Technology Stack {#tech-stack}
+
+The ILI Surveillance Dashboard is implemented as a **single self-contained HTML file** with no server-side components or database dependencies. All data are embedded directly in the file as JavaScript arrays.
+
+```{r tech-stack-table}
+kable(
+  data.frame(
+    Component = c("Core structure", "Styling", "Charting", "Typography",
+                  "Data validation tooling", "Version control"),
+    Technology = c(
+      "HTML5 / CSS3 / Vanilla JavaScript (ES6+)",
+      "Custom CSS with CSS custom properties (design tokens); responsive via media queries",
+      "Chart.js v4.4.1 (CDN: cdnjs.cloudflare.com)",
+      "DM Sans, DM Mono (Google Fonts CDN)",
+      "Python 3 with openpyxl / pandas for xlsx parsing and pre-update validation",
+      "Manual file versioning (ILI_Surveillance_Dashboard_v3_Week[N].html)"
+    )
+  ),
+  caption = "Dashboard technology stack",
+  col.names = c("Component", "Technology / Implementation"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(2, width = "10cm")
+```
+
+---
+
+## File Architecture {#tech-file}
+
+The dashboard is a single `.html` file containing:
+
+- **HTML structure** — semantic layout (header, sidebar, main) with responsive grid
+- **Embedded CSS** — all styling in a `<style>` block within `<head>`; includes light/dark theme tokens, responsive breakpoints, and chart-specific styles
+- **Embedded JavaScript** — a single `<script>` block at end of `<body>` containing:
+  - All data arrays (historical curves, observed data, facility data, sampling data, notification data)
+  - Chart.js instantiation for all 8+ charts
+  - Theme toggle, tab switching, and toggle button handlers
+  - Summary computation function (`computeAllSummaries()`) called on page load
+
+### Data Array Reference
+
+```{r array-ref-table}
+kable(
+  data.frame(
+    Array = c("AVG", "CI_UP", "OBS", "SMO",
+              "OBS_2022 / OBS_2023 / OBS_2024 / OBS_2025",
+              "THR", "PEAKS", "FACILITIES[i].cases/.opd/.rate",
+              "FACILITIES[i].total_c/.total_o",
+              "FAC_WEEKS", "AGE_CUR_CASES", "AGE_CUM_CASES",
+              "SAMPLE_DATA", "PATH_BY_WEEK", "SAMPLE_CHARS",
+              "NOTIF_INFA/B/OTHER", "NOTIF_META", "NOTIF_AGE_BY_WK",
+              "NOTIF_AGE_CUMUL"),
+    Length = c("52", "52", "52 (nulls for future weeks)", "52 (nulls)",
+               "52 each", "Object (4 keys)", "4 entries",
+               "N weeks each", "Scalar (cumulative)",
+               "N weeks", "7×4 matrix", "7×4 matrix",
+               "N entries (objects)", "N×5 matrix",
+               "Object keyed by week", "N each", "N entries",
+               "Object keyed by week", "6-element array"),
+    Updated = c("Season start only", "Season start only",
+                "Weekly — append OBS[N]", "Weekly — append SMO[N]",
+                "Season start only", "Season start only",
+                "Season start only",
+                "Weekly — append week N value",
+                "Weekly — recompute from cumulative",
+                "Weekly — append N",
+                "Weekly — replace with current week values",
+                "Weekly — replace with cumulative totals",
+                "Weekly — append new object",
+                "Weekly — append new row",
+                "Weekly — append new entry",
+                "Weekly — append count for week N",
+                "Weekly — append {u18, o18} for week N",
+                "Weekly — add entry for week N",
+                "Weekly — recompute from cumulative")
+  ),
+  caption = "JavaScript data array reference guide",
+  col.names = c("Array / Variable", "Length / Structure", "Update Frequency"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 11) %>%
+  column_spec(3, width = "5cm")
+```
+
+---
+
+## Browser Compatibility {#tech-browser}
+
+The dashboard has been tested in and is supported on:
+
+| Browser | Minimum version | Notes |
+|---|---|---|
+| Google Chrome | 90+ | Recommended |
+| Microsoft Edge | 90+ | Full support |
+| Mozilla Firefox | 88+ | Full support |
+| Safari (macOS) | 14+ | Full support |
+| Safari (iOS) | 14+ | Mobile responsive; touch tooltips available |
+| Internet Explorer | Any | **Not supported** |
+
+The dashboard uses CSS custom properties (variables), CSS Grid, and ES6 JavaScript features. Internet Explorer is incompatible with all three.
+
+**CDN dependency:** The dashboard requires an active internet connection to load Chart.js from `cdnjs.cloudflare.com` and fonts from `fonts.googleapis.com`. For use in environments without internet access, these assets must be bundled locally (see Section \@ref(tech-offline)).
+
+---
+
+## Offline / Air-Gapped Use {#tech-offline}
+
+To make the dashboard fully self-contained for offline use:
+
+1. Download Chart.js: `https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js`
+2. Save to the same directory as the dashboard HTML file
+3. Replace the CDN `<script>` tag in the HTML `<head>`:
+
+```html
+<!-- Replace this: -->
+<script src="https://cdnjs.cloudflare.com/.../chart.umd.js"></script>
+
+<!-- With this: -->
+<script src="chart.umd.js"></script>
+```
+
+4. For Google Fonts offline: either embed the font files locally or remove the `<link>` tag (the dashboard will fall back to system sans-serif fonts).
+
+---
+
+## File Naming Convention {#tech-naming}
+
+```
+ILI_Surveillance_Dashboard_v3_Week[N].html
+```
+
+| Segment | Meaning |
+|---|---|
+| `ILI_Surveillance_Dashboard` | System name |
+| `v3` | Major template version (structural/design changes increment this) |
+| `Week[N]` | Most recent epidemiological week for which data are entered |
+
+Prior week files should be **retained and not deleted**. They form an audit trail of the surveillance record.
+
+---
+
+## Python Validation Script {#tech-python}
+
+The pre-update validation script (`validate_notifications.py`) performs the following checks against the `inf.xlsx` export:
+
+1. Reads all rows for year 2026 from `Sheet1`
+2. Applies the subtype classification rule (see Section \@ref(notif-method))
+3. Outputs per-week counts for Influenza A, Influenza B, and Unspecified/Other from Week 1 to the most recent week in the file
+4. Compares weeks 1 to $N-1$ against the hardcoded expected values from the current dashboard arrays
+5. Flags any MISMATCH and exits with a non-zero return code if any prior week does not match
+
+The script requires Python 3.7+ and the `openpyxl` package:
+
+```bash
+pip install openpyxl
+python3 validate_notifications.py --file /path/to/inf.xlsx --week 23
+```
+
+---
+
+## Suggested Future Enhancements {#tech-future}
+
+The following enhancements are identified for potential future development:
+
+| Enhancement | Description | Priority |
+|---|---|---|
+| Automated data ingestion | Python or R script to parse source images (OCR) and auto-populate arrays, reducing manual transcription errors | High |
+| PDF export | Add a print-optimised CSS stylesheet or a button to export the dashboard as a PDF report | Medium |
+| Season recalculation workflow | Document or automate the WHO ACM upload and threshold extraction at the start of each new surveillance year | High |
+| Historical archive page | Embedded archive of prior-season dashboard files for longitudinal review | Low |
+| Alert notification | Email or messaging alert triggered when intensity classification changes | Medium |
+| Mobile push | Progressive Web App (PWA) wrapper to enable dashboard access and push notifications on mobile devices | Low |
+
+---
+
+## References {#references}
+
+```{r, results='asis', echo=FALSE}
+cat("<!-- References are managed in references.bib and rendered automatically by bookdown -->")
+```

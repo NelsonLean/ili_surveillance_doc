@@ -1,0 +1,202 @@
+# Data Sources {#data-sources}
+
+This chapter describes each data stream feeding the dashboard: how data are generated, how they are accessed, in what format they are received, and their known limitations.
+
+## ILI Consultation Data — Sentinel Facility Returns {#facility-returns}
+
+### Source and Collection
+
+Weekly ILI case counts and total outpatient department (OPD) attendance figures are extracted from facility-level health information records maintained at each of the seven sentinel KK. Data are compiled by the attending medical officer or public health nurse at the facility level and submitted to the PKK Tawau epidemiology unit at the close of each epidemiological week.
+
+The data capture three values per facility per week:
+
+- **ILI cases (semasa):** Total number of new attendances meeting the ILI syndromic case definition during the epidemiological week
+- **OPD total (semasa):** Total outpatient attendances at the facility during the same week
+- **Consultation rate — % (semasa):** The ratio of ILI cases to total OPD attendances, expressed as a percentage (computed independently as a cross-check; see Section \@ref(cr-formula))
+
+### Format Received
+
+Data are received as a **summary table image** (screenshot or scanned form), typically structured with three columns (KES/SEMASA, OPD/SEMASA, KONSULTASI %/SEMASA) and one row per facility. The dashboard operator manually reads values from this image and enters them into the corresponding JavaScript data arrays during the weekly update cycle (see Chapter \@ref(sop)).
+
+### Age Group Breakdown
+
+A supplementary table accompanies the facility summary, providing a disaggregation of the current week's ILI cases and OPD attendances by age group across each sentinel facility. Four age groups are used:
+
+- Under 10 years (< 10)
+- 10 to 18 years (10–18)
+- 19 to 59 years (19–59)
+- 60 years and above (≥ 60)
+
+This data is used to populate the age group stacked bar chart within the dashboard's Facility Activity section (see Section \@ref(age-chart)).
+
+### Limitations
+
+- Data are **manually transcribed** from image sources; transcription errors are possible and should be validated against the computed rate (see Section \@ref(validation)).
+- Reporting can be **incomplete or delayed** for remote facilities (e.g. KK Kalabakan, KK Felda Umas-Umas) due to connectivity or staffing constraints.
+- The ILI case definition is **syndromic**, not laboratory-confirmed. Rates reflect healthcare-seeking for fever with respiratory symptoms and may be influenced by seasonal non-influenza pathogens, healthcare access patterns, or local events unrelated to influenza activity.
+- Occasional **zero returns** (e.g. KK Felda Umas-Umas, Week 22, 2026) reflect reporting gaps rather than confirmed absence of ILI activity.
+
+---
+
+## Clinical Sampling Line List — Sentinel Laboratory Data {#sampling-data}
+
+### Source and Collection
+
+Clinical specimen collection for virological surveillance is conducted at **KK Tawau**, the sole designated clinical sampling sentinel site in the Tawau district. Nasopharyngeal swabs are collected from a target of 15 ILI-presenting patients per week, following standard sentinel sampling protocols.
+
+Collected specimens are processed by an accredited diagnostic laboratory, with results reported back to PKK Tawau. For each sample, the following data are recorded:
+
+| Field | Description |
+|---|---|
+| Year | Epidemiological year |
+| Week | Epidemiological week number |
+| Age | Patient age in years |
+| Gender | Male / Female |
+| Test type | Test method used (RTK, PCR, serology, RVRT swab) |
+| Result (raw) | Free-text result as reported by laboratory |
+| Pathogen classification | Standardised category assigned post-processing |
+
+### Pathogen Classification
+
+Raw laboratory result text is classified into the following standardised categories for dashboard display:
+
+```{r pathogen-class-table}
+kable(
+  data.frame(
+    Category = c("Influenza A", "Influenza B", "SARS-CoV-2",
+                 "Untyped Positive", "Inconclusive", "Negative"),
+    `Dashboard Tag` = c("Influenza A", "Influenza B", "SARS-CoV-2",
+                        "Untyped", "Inconclusive", "—"),
+    `Classification Rule` = c(
+      "Result text contains 'Influenza A' or 'INFLUENZA A'",
+      "Result text contains 'Influenza B' or 'INFLUENZA B'",
+      "Result text contains 'SARS-CoV' or 'COVID'",
+      "Positive result with no subtype identified",
+      "Result flagged as inconclusive or equivocal",
+      "Explicit negative result reported"
+    )
+  ),
+  caption = "Pathogen classification rules applied to sentinel sample results",
+  col.names = c("Category", "Dashboard Label", "Classification Rule"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13)
+```
+
+Co-detections (e.g. Influenza A + SARS-CoV-2 in the same sample) are counted individually under each respective pathogen category and noted in the weekly remarks field.
+
+### Format Received
+
+Data are received as a **line list image** (one row per sample), containing year, week, age, gender, and result columns. The dashboard operator reads each row, classifies the pathogen, and enters aggregate counts (by pathogen type) into the dashboard data arrays (see Chapter \@ref(sop)).
+
+### Limitations
+
+- Sampling is limited to **KK Tawau only**; results may not represent pathogen circulation at rural sentinel sites.
+- Sample counts vary week-to-week (target: 15 per week); weeks with fewer than 15 samples should be interpreted cautiously given wider uncertainty in positivity estimates.
+- Free-text laboratory result fields require **manual classification**; ambiguous entries are classified conservatively as "Untyped Positive" or "Inconclusive."
+- There is an inherent **reporting lag** between specimen collection and result return; dashboard values reflect results received, not specimens collected.
+
+---
+
+## Influenza Notification Database {#notification-db}
+
+### Source and Nature
+
+The influenza notification data integrated in the dashboard are drawn from an **unofficial, locally-administered notification database** maintained by PKK Tawau. The database is hosted on **Google Sheets** and serves as a district-level notification registry for confirmed influenza cases, supplementing the formal national notification system.
+
+This database is distinct from the official national electronic notification system (eNotifikasi/iNotis) and is maintained independently by the PKK Tawau epidemiology unit.
+
+### Reporting Mechanism
+
+Both **private practitioners** and **public facility staff** (government hospitals, health clinics) within the Tawau district are invited to submit confirmed influenza case notifications directly to the Google Sheet when a patient tests positive for influenza via any recognised diagnostic method. Submission is **voluntary and practitioner-initiated**.
+
+For each notified case, the database captures:
+
+| Field | Description |
+|---|---|
+| Year | Year of notification |
+| Week | Epidemiological week of notification |
+| Date | Date of consultation or positive result |
+| Diagnosis | Primary diagnosis (typically 'INFLUENZA') |
+| Age | Patient age in years |
+| Jantina / Gender | Patient sex |
+| Pelapor / Reporting Facility | Name of the reporting practitioner or clinic |
+| Reporting Facility Type | Private or Government |
+| Test | Test method used |
+| Result | Raw result text as entered by reporter |
+| Test_Result | Standardised classification (post-processing) |
+
+### Subtype Classification
+
+The `Test_Result` field is used as the primary classification basis. The subtype classification rule applied to generate dashboard categories is:
+
+- **Influenza A:** `Test_Result` contains the string `"Influenza A"` (case-insensitive). Note: entries classified as `"Influenza A & B"` (dual positive serology) are counted under Influenza A in the current schema.
+- **Influenza B:** `Test_Result` is exactly `"Influenza B"` (case-insensitive).
+- **Unspecified / Other:** All remaining entries, including `"Influenza (unspecified)"`, `"Parainfluenza Virus 3"`, and any entry with null or ambiguous classification.
+
+This classification is applied programmatically during the weekly data extraction step using Python (see Section \@ref(xlsx-processing)).
+
+### Format Received
+
+The Google Sheet is exported as a **Microsoft Excel file (`inf.xlsx`)** at the time of each weekly dashboard update. The file contains all notifications from the start of the surveillance year (Week 1) to the most recent week, as a cumulative line list. New entries are identified by filtering for the current epidemiological week number.
+
+### Limitations and Important Caveats
+
+The unofficial nature of this database requires that the following caveats be clearly stated for all users:
+
+1. **Voluntary reporting** — Submission is not mandated. Under-notification is expected and the counts represent a minimum estimate of confirmed influenza in the district.
+2. **Reporting lag** — Cases may be entered days to weeks after the consultation date. Weekly counts in recent weeks may be revised upward as late entries arrive.
+3. **Free-text quality** — The `Result` field is entered as free text by reporters; inconsistent formatting, spelling variation, and missing entries are common. The `Test_Result` standardised field mitigates this but does not eliminate classification uncertainty.
+4. **Duplicate entries** — The database has no automated deduplication. Cases referred between facilities or entered multiple times cannot be reliably excluded.
+5. **Coverage uncertainty** — The proportion of confirmed cases in the district captured by this database is unknown. Participation rates vary across facilities and over time.
+6. **Not a validated surveillance system** — Data from this database should be interpreted as a **supplementary signal** alongside, and not as a replacement for, formal notifiable disease surveillance data.
+
+---
+
+## Historical Baseline Data — WHO Average Curves Shiny App {#who-acm}
+
+### Source
+
+The historical average curve, confidence interval bands, and intensity thresholds displayed on the dashboard are derived from outputs generated by the **WHO Global Influenza Programme Average Curves Shiny Application**, accessible at:
+
+> https://worldhealthorg.shinyapps.io/averagecurves/
+
+### Input Data
+
+The application receives as input a structured upload file (`WHO_ACM_Tawau_upload`) containing weekly ILI consultation rates for the Tawau district for the baseline seasons 2022 through 2025. The 2009 H1N1 pandemic season is excluded from baseline computations on the basis that pandemic data distort the estimation of inter-seasonal variability (see Section \@ref(threshold-method)).
+
+### Output Parameters Used
+
+The following outputs from the WHO ACM application are extracted and embedded in the dashboard as fixed constants for the current surveillance season:
+
+```{r acm-params-table}
+kable(
+  data.frame(
+    Parameter = c(
+      "Model type", "Orientation", "Epidemic threshold", "Smoothing window",
+      "Moderate threshold (CI)", "High threshold (CI)",
+      "Extraordinary threshold (CI)", "Distribution assumption",
+      "Pandemic season excluded"
+    ),
+    Value = c(
+      "One Wave", "Calendar year", "Median of baseline",
+      "3-week moving average", "40th percentile", "90th percentile",
+      "97.5th percentile", "Normal (z-score)", "2009 H1N1"
+    )
+  ),
+  caption = "WHO ACM model parameters applied to Tawau ILI surveillance data",
+  col.names = c("Parameter", "Value / Setting"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13)
+```
+
+The derived threshold values for the 2026 surveillance season at district level are presented in Chapter \@ref(methodology).
+
+### Limitations
+
+- Threshold values are **fixed at the start of the surveillance season** based on the prior four-year baseline. They are not updated intra-seasonally.
+- With only four baseline seasons, the statistical estimates of threshold levels carry **wider uncertainty** than would be obtained with longer historical series.
+- The WHO ACM Shiny App is a **web-based tool** and its availability is subject to external server uptime. Threshold recalculation requires access to the application.

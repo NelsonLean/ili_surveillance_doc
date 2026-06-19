@@ -1,0 +1,16 @@
+book_filename: "ili-surveillance-tawau"
+language:
+  ui:
+    chapter_name: "Chapter "
+repo: https://github.com/YOUR-USERNAME/ili-surveillance-tawau-docs
+output_dir: docs
+rmd_files:
+  - index.Rmd
+  - 02-data-sources.Rmd
+  - 03-methodology.Rmd
+  - 04-dashboard-guide.Rmd
+  - 05-sop-update.Rmd
+  - 06-interpretation.Rmd
+  - 07-technical.Rmd
+new_session: yes
+before_chapter_script: _common.R

@@ -1,0 +1,326 @@
+# Dashboard Section Guide {#guide}
+
+This chapter provides a structured description of each section and component of the ILI Surveillance Dashboard. Each element is described in terms of its purpose, the data source driving it, and guidance on correct reading and interpretation. Screenshot figures are referenced throughout; placeholder captions indicate where images should be inserted.
+
+---
+
+## Header Bar {#header-bar}
+
+**Purpose:** Provides persistent orientation information visible on all screens and scroll positions.
+
+**Components:**
+
+| Element | Description |
+|---|---|
+| Logo mark | PKK Tawau ILI Surveillance branding |
+| Title | "ILI Surveillance · Pejabat Kesihatan Kawasan Tawau · Sabah, Malaysia" |
+| Season badge | Confirms the active surveillance year (e.g. "Season 2026") with a live indicator dot |
+| Data currency badge | Displays the most recent epidemiological week for which data are entered and the end date of that week (e.g. "Data as of Wk 23 · 13 Jun 2026") |
+| Theme toggle | Switches between dark mode (default) and light mode for display preference |
+
+**Reading the data currency badge:** This badge is the primary indicator of whether the dashboard is current. A week number that is two or more weeks behind the current calendar date indicates the dashboard has not yet been updated for the most recent week.
+
+---
+
+## Sidebar — Current Status Panel {#status-panel}
+
+**Purpose:** Provides the single most important surveillance summary — the current week's intensity classification — at a glance.
+
+**Components:**
+
+### Week Label and Date Range
+
+Displays the current epidemiological week number and the corresponding calendar date range (Sunday to Saturday). The date range is computed automatically from the week number.
+
+### Observed CR
+
+The large numerical display on the right of the status card shows the **raw (unsmoothed) district-level ILI consultation rate** for the current week, expressed as a percentage. This is the value used for threshold comparison and intensity classification.
+
+### 3-Week Smoothed CR
+
+The smaller value displayed below the week label shows the **trailing three-week smoothed CR** (see Section \@ref(smoothing)). This value is displayed for trend interpretation and should be used alongside the observed CR to distinguish a genuine sustained trend from a single-week spike or dip.
+
+> **Interpretation guidance:** If the observed CR crosses a threshold boundary but the smoothed CR remains below it, exercise caution before concluding that a threshold has genuinely been crossed — a single anomalous week should prompt verification of source data before a formal alert is issued.
+
+### Intensity Status Tag
+
+The coloured banner at the base of the status card displays the current intensity classification. Five possible states:
+
+```{r status-tag-table}
+kable(
+  data.frame(
+    Status = c("🟢 Below seasonal threshold", "🟡 Above epidemic",
+               "🟠 Moderate intensity", "🔴 High intensity",
+               "🟣 Extraordinary"),
+    Condition = c(
+      paste0("Observed CR < ", 14.135, "%"),
+      paste0(14.135, "% ≤ CR < ", 18.770, "%"),
+      paste0(18.770, "% ≤ CR < ", 22.519, "%"),
+      paste0(22.519, "% ≤ CR < ", 24.176, "%"),
+      paste0("CR ≥ ", 24.176, "%")
+    ),
+    Colour = c("Green", "Yellow/Amber", "Orange", "Red", "Purple")
+  ),
+  caption = "Intensity classification criteria for the status tag (district level, 2026)",
+  col.names = c("Status Label", "Threshold Condition", "Display Colour"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13)
+```
+
+---
+
+## Sidebar — Intensity Thresholds Panel {#threshold-panel}
+
+**Purpose:** Provides a permanent reference for the numerical threshold values, allowing the user to contextualise any observed rate against all five intensity tiers simultaneously.
+
+The panel lists the five threshold categories with their corresponding CR boundary values (see Section \@ref(threshold-method) for derivation). Values are fixed for the duration of the surveillance season.
+
+---
+
+## Sidebar — Historical Seasons Table {#seasons-table}
+
+**Purpose:** Provides a rapid comparative reference of previous seasons' peak activity, enabling comparison of the current season's trajectory against historical precedent.
+
+**Columns:**
+
+| Column | Description |
+|---|---|
+| Season | Year of the historical surveillance season |
+| Pk Wk | Epidemiological week in which the seasonal peak CR was observed |
+| Peak | Peak CR value (%) recorded in that season |
+| Level | Peak intensity classification (Moderate / High / Extraordinary) |
+
+The 2026 row is displayed with an "Active" badge and peak values are populated as they become available through the season.
+
+---
+
+## Sidebar — Model Parameters Panel {#model-params}
+
+**Purpose:** Serves as an audit reference for the analytical parameters used to generate the average curve and threshold values. Documents the WHO ACM configuration applied to the Tawau data upload.
+
+No user interaction is required with this panel. It is included for reproducibility and to satisfy documentation requirements for surveillance programme audits.
+
+---
+
+## Main Panel — Summary Metric Strip {#metric-strip}
+
+**Purpose:** Six key summary statistics presented as prominent numeric cards, providing a rapid season-to-date overview before drilling into charts.
+
+```{r metric-strip-table}
+kable(
+  data.frame(
+    Card = c("Average curve peak", "2026 peak so far", "Weeks above epidemic",
+             "Baseline seasons", "Peak week range", "Current week CR"),
+    `Data Source` = c(
+      "Historical average curve (ACM output)",
+      "2026 observed CR array (OBS)",
+      "2026 observed CR array vs T_epi",
+      "PEAKS array",
+      "PEAKS array",
+      "Most recent value in OBS array"
+    ),
+    `What it shows` = c(
+      "The single highest point on the historical average curve across all 52 weeks — represents the 'typical seasonal peak' for Tawau",
+      "The highest observed CR in the current season to date, with the week in which it occurred",
+      "Count of weeks in 2026 where the observed CR exceeded the epidemic threshold (14.135%), with the specific week numbers listed",
+      "Number of seasons in the historical baseline (4: 2022–2025)",
+      "The span of epidemiological weeks in which historical seasons peaked — indicates when to expect peak activity",
+      "Current week's district CR with threshold-matched colour coding"
+    )
+  ),
+  caption = "Summary metric strip — card descriptions",
+  col.names = c("Card Label", "Data Source", "Interpretation"),
+  booktabs = TRUE
+) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE, font_size = 13) %>%
+  column_spec(3, width = "8cm")
+```
+
+---
+
+## Main Chart — ILI Trends and Intensity Thresholds {#main-chart}
+
+**Purpose:** The primary analytical chart of the dashboard. Displays the 2026 observed weekly ILI consultation rate in the context of the historical average curve, confidence interval band, and the four intensity threshold lines.
+
+### Chart Layers
+
+| Layer | Type | Description |
+|---|---|---|
+| Average curve | Solid line (grey/white) | Historical mean CR by epidemiological week (2022–2025 baseline) |
+| 90% CI band | Shaded area | Range from average curve to the 90th percentile upper bound — represents the expected variation band |
+| 2026 observed | Solid line (blue) with dots | Raw weekly district CR for the current season |
+| 2026 smoothed | Dashed line (teal) | Three-week smoothed CR — toggle on to see trend without noise |
+| Year overlay | Dashed line (colour varies) | Any prior year's weekly CR series for direct visual comparison; selectable via dropdown |
+| Threshold lines | Dashed horizontal lines | Epidemic (amber), Moderate (orange), High (red), Extraordinary (purple) |
+| Notifications bar | Bar (amber, right axis) | Total influenza notifications per week; scaled to secondary y-axis |
+
+### Toggle Controls
+
+Four toggle buttons control chart layer visibility:
+
+- **CI band** (default ON) — shows/hides the 90% confidence interval shaded area
+- **Smoothed** (default OFF) — shows/hides the 3-week smoothed CR line
+- **Thresholds** (default ON) — shows/hides all four intensity threshold lines
+- **Notifications** (default OFF) — shows/hides the notification bar series (activates secondary y-axis)
+
+**Year overlay dropdown:** Allows selection of any baseline season (2022–2025) as a dashed reference line, enabling direct visual comparison of the current season trajectory against a specific prior year.
+
+### Reading the Chart
+
+- When the **blue observed line crosses above the amber epidemic threshold**, ILI activity has entered the epidemic range.
+- The **width of the CI band** at any week reflects the degree of inter-seasonal variability typical for that time of year. Wider bands indicate weeks where year-to-year variation has historically been large.
+- Simultaneous display of the **notification bar** and the **observed CR line** allows assessment of whether virologically confirmed influenza aligns with the syndromic ILI signal.
+
+---
+
+## Weekly Values Bar Chart {#bar-chart}
+
+**Purpose:** Displays the absolute weekly CR values for the current season as a bar chart, with bars colour-coded by intensity level. Provides a cleaner week-by-week comparison than the trend line chart.
+
+**Colour coding:**
+
+- Blue — Below epidemic threshold
+- Amber — Above epidemic threshold (but below Moderate)
+- Red — At or above Moderate threshold
+
+A horizontal dashed line marks the epidemic threshold for reference.
+
+---
+
+## Facility Breakdown — Summary Cards {#fac-cards}
+
+**Purpose:** Seven cards (one per sentinel facility) providing a snapshot of the most recent week's ILI activity at facility level, with week-on-week direction indicators.
+
+**Each card displays:**
+
+- Facility name with colour-coded top border
+- Current week's facility CR (%) with a directional change indicator (▲/▼) showing percentage change from the previous week
+- Total cumulative ILI cases for the season to date
+- Total cumulative OPD attendances for the season to date
+- Epidemiological week in which the facility's peak CR occurred this season
+
+**Week-on-week change indicator:** A red upward arrow (▲) indicates the rate increased relative to the prior week; a green downward arrow (▼) indicates a decrease. The percentage change shown is relative to the prior week's rate, not to any threshold.
+
+---
+
+## Facility Activity Chart (Tabbed Views) {#fac-chart}
+
+A tabbed chart providing four different views of facility-level data. Toggle buttons switch between views.
+
+### ILI Rate % (Heatmap) {#heatmap}
+
+**Default view.** A matrix heatmap where:
+- **Rows** = sentinel facilities
+- **Columns** = epidemiological weeks
+- **Cell value** = facility ILI CR (%) for that week
+- **Cell colour** = intensity level based on **facility-specific thresholds** (see Section \@ref(facility-thresholds))
+
+Colour scale:
+
+| Colour | Intensity |
+|---|---|
+| 🟩 Green | Below seasonal threshold |
+| 🟨 Yellow | Low (epidemic) |
+| 🟧 Orange | Moderate |
+| 🟥 Red | High |
+| 🟪 Purple | Extraordinary |
+
+Hovering over a cell displays the exact rate, intensity classification, and the facility's threshold values for context.
+
+A reference table below the heatmap lists all facility-specific threshold values for the current baseline period.
+
+> **Important:** Colours in the heatmap are relative to each facility's own thresholds, not the district threshold. A cell displayed as "High" for one facility does not imply the same absolute rate as "High" for another facility.
+
+### Cases and OPD Views {#cases-opd-views}
+
+Stacked bar charts showing weekly raw ILI case counts (Cases view) or total OPD attendances (OPD view) broken down by facility. Useful for identifying facilities driving changes in the district total, and for detecting anomalous drops in OPD volume that may indicate reporting gaps rather than genuine ILI decreases.
+
+### Age Group View {#age-chart}
+
+Stacked bar chart showing the distribution of ILI cases by age group (< 10, 10–18, 19–59, ≥ 60) across facilities. A toggle switches between:
+
+- **Current week** — age distribution for the most recent week across all facilities
+- **Cumulative** — age distribution accumulated across all reported weeks of the season to date
+
+---
+
+## Clinical Sampling — Metric Cards {#sampling-cards}
+
+Eight metric cards summarising sentinel laboratory results for the season to date:
+
+| Card | Description |
+|---|---|
+| Total samples | Aggregate specimens tested across all reported weeks |
+| Total positives | Total specimens with a positive result for any pathogen |
+| Overall positivity | Total positives as a proportion of total samples tested |
+| Influenza A | Count of samples positive for Influenza A; weeks detected listed |
+| Influenza B | Count of samples positive for Influenza B; weeks detected listed |
+| SARS-CoV-2 | Count of samples positive for SARS-CoV-2; weeks detected listed |
+| Untyped positive | Positive samples with no specific pathogen identified |
+| Inconclusive | Samples with indeterminate results (excluded from positivity rate) |
+
+---
+
+## Sample Results Chart {#sample-chart}
+
+**Purpose:** Displays weekly sample composition (negative / positive / inconclusive) as a stacked bar, overlaid with the weekly positivity rate as a line on a secondary y-axis.
+
+The **positivity rate line** (amber dashed) should be interpreted in conjunction with the main ILI trend chart. Rising positivity alongside a rising CR provides stronger evidence of influenza-driven ILI activity than either signal alone.
+
+---
+
+## Pathogen Breakdown Chart {#pathogen-chart}
+
+**Purpose:** Disaggregates weekly positive samples by pathogen type (Influenza A, Influenza B, SARS-CoV-2, Untyped, Inconclusive) as a stacked bar chart. Enables identification of which pathogen is driving positives in any given week and tracking of shifts in pathogen dominance over the season.
+
+---
+
+## Weekly Sampling Log (Accordion Table) {#sample-table}
+
+**Purpose:** A complete record of all sentinel sampling results by week, with expandable rows for each week revealing the age and gender breakdown of samples tested.
+
+**Columns:** Week · Samples tested · Negative · Positive · Positivity rate (%) · Pathogens identified (tagged by type)
+
+**Expanding a row:** Click any row (or the ▶ button) to reveal the age group and gender breakdown for that week's samples. The proportional bars within the expanded view provide a visual representation of the demographic distribution.
+
+---
+
+## Influenza Notifications — Metric Cards {#notif-cards}
+
+Four metric cards summarising the influenza notification database for the season to date (see Section \@ref(notification-db)):
+
+| Card | Description |
+|---|---|
+| Total notifications | All entries in the database for the current season |
+| Influenza A | Count classified as Influenza A; percentage of total; dominant weeks |
+| Influenza B | Count classified as Influenza B; percentage of total; dominant weeks |
+| Unspecified / Other | Count not classified as A or B; includes parainfluenza and untyped entries |
+
+---
+
+## Weekly Notifications Chart {#notif-chart}
+
+**Purpose:** Stacked bar chart of weekly notification counts disaggregated by subtype (Influenza A, Influenza B, Unspecified/Other). Enables visualisation of subtype dominance shifts over the season.
+
+Hovering over a bar also displays the age breakdown (< 18 vs ≥ 18) for that week's notifications.
+
+---
+
+## Age Group Distribution Chart (Notifications) {#notif-age-chart}
+
+**Purpose:** Horizontal bar chart of notification case counts by age group (six bands from < 5 to ≥ 60). A dropdown selector allows filtering by individual epidemiological week or viewing the cumulative season total.
+
+This chart is particularly useful for identifying age-group-specific surges (e.g. a spike in the 5–9 or 10–17 group may indicate school-setting transmission).
+
+---
+
+## Footnote {#footnote}
+
+The dashboard footer provides the methodological provenance statement:
+
+> *"Epidemic threshold: median of historic ILI rates (2022–2025). Intensity thresholds derived from 40th / 90th / 97.5th percentile of smoothed historic peaks using normal distribution. 2009 H1N1 pandemic excluded. Parameter: WHO_ACM_Tawau_upload. Source: WHO Global Influenza Programme — Average Curves Shiny App · Pejabat Kesihatan Kawasan Tawau, Sabah Malaysia."*
+
+This statement should remain unchanged unless the baseline period, model parameters, or source application change.
